@@ -239,7 +239,7 @@ LSTM모델 분석을 통해 왼쪽 위에 예측된 전략이 표시됩니다.
 ## 6.1. 프로젝트 소개 자료
 > PPT 등
 ## 6.2. 시연 영상
-[![프로젝트 데모 영상](https://www.youtube.com/watch?v=YcgTPpjReJk/hqdefault.jpg)](https://www.youtube.com/watch?v=YcgTPpjReJk)
+[![프로젝트 데모 영상](![Image](https://github.com/user-attachments/assets/7e95b95a-6f9f-4a60-a901-7a67146510c5))](https://www.youtube.com/watch?v=YcgTPpjReJk)
 
 # 7. 팀 구성
 ## 7.1. 팀원별 소개 및 역할 분담
