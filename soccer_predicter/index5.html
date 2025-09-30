@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Tactical Analysis AI (LSTM Version)</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d10; --gradient: radial-gradient(1200px 800px at -5% -10%, #18334a 0%, transparent 50%), radial-gradient(1200px 800px at 120% 110%, #132b1f 0%, transparent 50%);
+    --panel:#12161c; --glass: rgba(255,255,255,0.04); --glass-2: rgba(255,255,255,0.06);
+    --card-border: rgba(255,255,255,0.12); --txt:#e6ebf0; --txt-2:#9fb0bf;
+    --ac:#00e0c7; --ac-2:#6cf2e5; --shadow: 0 10px 30px rgba(0,0,0,.35); --ring: 0 0 0 3px rgba(0,224,199,.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:'Noto Sans KR','Montserrat',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--txt);background:var(--bg);background-image:var(--gradient);background-attachment:fixed;display:flex;overflow:hidden}
+  a,button,select{font:inherit;text-decoration:none;} button{cursor:pointer} img,video{display:block;max-width:100%}
+  .app{display:flex;width:100%;height:100%}
+  .sidebar{width:280px;min-width:260px;padding:20px;display:flex;flex-direction:column;gap:18px;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.15));border-right:1px solid var(--card-border);backdrop-filter:blur(10px)}
+  .main{flex:1;padding:28px;overflow:auto;position:relative}
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.4px}
+  .badge{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:radial-gradient(120% 120% at 20% 10%,var(--ac) 0%,var(--ac-2) 45%,#256e86 100%);box-shadow:0 8px 18px rgba(0,224,199,.25), inset 0 0 20px rgba(255,255,255,.15);color:#00110e;font-weight:900}
+  .brand span{color:var(--ac)}
+  .nav{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .nav a{color:var(--txt-2);padding:12px 14px;border-radius:12px;border:1px solid transparent;display:flex;align-items:center;gap:10px;background:transparent;transition:.2s}
+  .nav a:hover{background:var(--glass);border-color:var(--card-border);color:var(--ac)}
+  .nav a.active{background:linear-gradient(to right,rgba(0,224,199,.15),rgba(0,224,199,.05));border-color:rgba(0,224,199,.35);color:var(--ac);box-shadow:inset 0 0 0 1px rgba(0,224,199,.2)}
+  .toolbar{display:flex;gap:10px}
+  .btn{background:linear-gradient(180deg,var(--ac),var(--ac-2));color:#00110e;border:none;padding:10px 14px;border-radius:12px;font-weight:800;box-shadow:0 10px 18px rgba(0,224,199,.25);transition:.2s;outline:none;display:inline-block;text-align:center;}
+  .btn:hover{transform:translateY(-1px);filter:saturate(1.1)}
+  .btn.ghost{background:transparent;color:var(--txt);border:1px solid var(--card-border);box-shadow:none}
+  .btn:disabled{cursor:not-allowed;filter:grayscale(.8);opacity:.7}
+  .card{background:linear-gradient(180deg,var(--glass-2),transparent);border:1px solid var(--card-border);border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:var(--shadow)}
+  h1{font-size:1.9rem;letter-spacing:.2px} h2{font-size:1.2rem;margin-bottom:12px} .muted{color:var(--txt-2)}
+  .grid{display:grid;gap:16px}
+  .drop{position:relative;border:1.5px dashed var(--card-border);border-radius:14px;padding:46px;text-align:center;transition:.25s;background:linear-gradient(180deg,transparent,rgba(255,255,255,.02));overflow:hidden;isolation:isolate}
+  .drop:hover{border-color:rgba(0,224,199,.5);box-shadow:0 0 0 2px rgba(0,224,199,.15) inset}
+  .drop.drag{border-color:var(--ac);box-shadow:0 0 0 3px rgba(0,224,199,.25) inset}
+  .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .icon-circle{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;margin:0 auto 10px;background:radial-gradient(120% 120% at 20% 10%,var(--ac) 0%,var(--ac-2) 60%,#256e86 100%);color:#00110e;font-weight:900;box-shadow:inset 0 0 18px rgba(255,255,255,.2)}
+  .surface{border-radius:14px;border:1px solid var(--card-border);background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));overflow:hidden;position:relative}
+  .viewport{aspect-ratio:16/9;background:#000;display:grid;place-items:center;color:var(--txt-2)}
+  video{width:100%;height:100%;object-fit:cover}
+  .progress{height:12px;background:rgba(255,255,255,.06);border:1px solid var(--card-border);border-radius:999px;overflow:hidden}
+  .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--ac),var(--ac-2));box-shadow:0 0 16px rgba(0,224,199,.35);transition: width .3s ease;}
+  :focus-visible{outline:none;box-shadow:var(--ring)!important;border-radius:12px}
+  .note{font-size:.92rem}
+  .err{color:#ff8a8a}
+  .ok{color:#86f7d3}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="사이드바">
+    <div class="brand"><div class="badge">DX</div><div>DRONEX <span>Tactical</span></div></div>
+    <nav class="nav" role="navigation">
+      <a class="active" href="#">새 분석</a>
+    </nav>
+  </aside>
+
+  <main class="main" role="main">
+    <div class="header">
+      <h1>영상 분석 (LSTM)</h1>
+      <div class="toolbar">
+        <button class="btn ghost" id="resetBtn">새 분석</button>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>1) 영상 업로드</h2>
+      <div id="drop" class="drop" tabindex="0">
+        <div class="icon-circle">↑</div>
+        <h3>파일을 이곳에 끌어다 놓으세요</h3>
+        <p class="muted">또는 클릭하여 선택</p>
+        <input id="file" type="file" accept="video/*"/>
+      </div>
+      <div id="fileMeta" style="display:none; margin-top:14px;">
+        <span id="metaName" style="font-weight:700"></span>
+        <span id="uploadMsg" class="muted"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2) 분석 시작</h2>
+      <div class="grid">
+        <div class="surface"><div class="viewport" id="videoWrap"><div class="muted">영상 미리보기 대기 중…</div></div></div>
+        <div>
+          <button id="analyzeBtn" class="btn" disabled>분석 시작</button>
+          <div style="margin-top:14px" class="progress" aria-hidden="true"><div id="bar" class="bar"></div></div>
+          <p id="apiMsg" class="muted" style="margin-top:10px">※ 영상을 업로드하면 분석을 시작할 수 있습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3) 분석 결과</h2>
+      <div class="surface">
+        <div class="viewport" id="resultWrap"><div class="muted">분석 완료 후 재생됩니다.</div></div>
+      </div>
+      <div id="downloadWrap" style="margin-top: 16px; display:flex; gap:10px;"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const API_BASE = 'http://localhost:8000';
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const videoWrap = document.getElementById('videoWrap');
+const resultWrap = document.getElementById('resultWrap');
+const downloadWrap = document.getElementById('downloadWrap');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const bar = document.getElementById('bar');
+const apiMsg = document.getElementById('apiMsg');
+const resetBtn = document.getElementById('resetBtn');
+const metaName = document.getElementById('metaName');
+const uploadMsg = document.getElementById('uploadMsg');
+const fileMeta = document.getElementById('fileMeta');
+
+let uploadedFileId = null;
+let originalFileName = 'video.mp4';
+
+function setMsg(el, text, isError = false){ el.textContent = text || ''; el.classList.remove('err', 'ok'); if(text){ el.classList.add(isError ? 'err' : 'ok'); }}
+function setProgress(pct){ bar.style.width = `${Math.max(0, Math.min(100, pct || 0))}%`; }
+function absUrl(path){ return path && !path.startsWith('http') ? `${API_BASE}${path}` : path; }
+
+// ==========================================================
+// ===== ✅ 브라우저 보안 정책을 우회하는 강제 다운로드 함수 =====
+// ==========================================================
+async function forceDownload(url, filename) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('네트워크 응답이 올바르지 않습니다.');
+    
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(blobUrl);
+    document.body.removeChild(a);
+
+  } catch (err) {
+    console.error('다운로드 실패:', err);
+    alert(`파일 다운로드에 실패했습니다: ${err.message}`);
+  }
+}
+
+['dragenter','dragover'].forEach(evt => drop.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); drop.classList.add('drag'); }));
+['dragleave','drop'].forEach(evt => drop.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+async function handleFiles(files){
+  const f = files && files[0]; if(!f) return;
+  if(!/^video\//.test(f.type)){ alert('영상 파일만 업로드할 수 있습니다.'); return; }
+  
+  originalFileName = f.name;
+  fileMeta.style.display = 'block';
+  metaName.textContent = f.name;
+
+  try {
+    setMsg(uploadMsg, '· 업로드 중...');
+    analyzeBtn.disabled = true;
+    const fd = new FormData();
+    fd.append('file', f);
+    const res = await fetch(`${API_BASE}/api/upload`, { method:'POST', body: fd });
+    if (!res.ok) throw new Error(`업로드 실패 (${res.status})`);
+    
+    const up = await res.json();
+    uploadedFileId = up.file_id;
+
+    videoWrap.innerHTML = '';
+    const vid = document.createElement('video');
+    vid.controls = true;
+    vid.muted = true;
+    vid.src = absUrl(up.video_url);
+    videoWrap.appendChild(vid);
+
+    setMsg(uploadMsg, '· 업로드 완료');
+    analyzeBtn.disabled = false;
+    setMsg(apiMsg, '“분석 시작” 버튼을 눌러주세요.');
+
+  } catch (err) {
+    setMsg(apiMsg, `업로드 실패: ${err.message}`, true);
+  }
+}
+
+// ==========================================================
+// ===== ✅ 다운로드 버튼 생성 로직 수정 =====
+// ==========================================================
+function renderResult(data){
+  resultWrap.innerHTML = '';
+  downloadWrap.innerHTML = '';
+
+  if(data.video_url) {
+    const videoSrc = absUrl(data.video_url);
+    const v = document.createElement('video');
+    v.src = videoSrc;
+    v.controls = true;
+    resultWrap.appendChild(v);
+    
+    // 링크(<a>) 대신 버튼(<button>)을 생성합니다.
+    const videoDownloadBtn = document.createElement('button');
+    const originalNameNoExt = originalFileName.split('.').slice(0, -1).join('.') || "result";
+    const videoFilename = `${originalNameNoExt}_analysis.mp4`;
+    videoDownloadBtn.className = 'btn';
+    videoDownloadBtn.textContent = '결과 영상 다운로드';
+    // 클릭 시 forceDownload 함수를 호출합니다.
+    videoDownloadBtn.onclick = () => forceDownload(videoSrc, videoFilename);
+    downloadWrap.appendChild(videoDownloadBtn);
+  }
+
+  if(data.csv_url) {
+    const csvSrc = absUrl(data.csv_url);
+    const csvDownloadBtn = document.createElement('button');
+    const originalNameNoExt = originalFileName.split('.').slice(0, -1).join('.') || "result";
+    const csvFilename = `${originalNameNoExt}_positions.csv`;
+    csvDownloadBtn.className = 'btn ghost';
+    csvDownloadBtn.textContent = '좌표 데이터(CSV) 다운로드';
+    // 클릭 시 forceDownload 함수를 호출합니다.
+    csvDownloadBtn.onclick = () => forceDownload(csvSrc, csvFilename);
+    downloadWrap.appendChild(csvDownloadBtn);
+  }
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!uploadedFileId) { alert('먼저 영상을 업로드하세요.'); return; }
+  
+  try {
+    analyzeBtn.disabled = true;
+    setProgress(0);
+    setMsg(apiMsg, '분석 시작 요청...');
+
+    const fd = new FormData();
+    fd.append('file_id', uploadedFileId);
+    const res = await fetch(`${API_BASE}/api/analyze`, { method: 'POST', body: fd });
+    if (!res.ok) throw new Error(`분석 시작 실패 (${res.status})`);
+    const { job_id } = await res.json();
+
+    setMsg(apiMsg, '분석이 진행 중입니다... (0%)');
+
+    const tick = async () => {
+      try {
+        const statusRes = await fetch(`${API_BASE}/api/status/${job_id}`);
+        if (!statusRes.ok) return;
+        const st = await statusRes.json();
+        
+        setProgress(st.progress);
+        setMsg(apiMsg, `분석이 진행 중입니다... (${Math.round(st.progress || 0)}%)`);
+
+        if (st.status === 'done') {
+          setMsg(apiMsg, '분석 완료!', false);
+          const resultRes = await fetch(`${API_BASE}/api/result/${job_id}`);
+          const resultData = await resultRes.json();
+          renderResult(resultData);
+        } else if (st.status === 'error') {
+          setMsg(apiMsg, `분석 중 오류 발생: ${st.message}`, true);
+        } else {
+          setTimeout(tick, 1000);
+        }
+      } catch (err) {
+        setMsg(apiMsg, `상태 확인 중 에러: ${err.message}`, true);
+      }
+    };
+    setTimeout(tick, 1000);
+
+  } catch (err) {
+    setMsg(apiMsg, `API 에러: ${err.message}`, true);
+    analyzeBtn.disabled = false;
+  }
+});
+
+resetBtn.addEventListener('click', () => { location.reload(); });
+</script>
+</body>
+</html>
